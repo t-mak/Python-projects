@@ -1,0 +1,13 @@
+Welcome to textgame version 0.1!
+Let's play a little RPG.
+
+In lust for gold and glory you took on a challenge to clear the dangerous rooms inside an abandoned castle. The rumors say they are full of terrible monsters and there is a dragon sleeping there... 
+
+Your character will grow in strength as you proceed through the rooms.
+You can replenish your health by using potions sometimes dropped in the rooms. Use them wisely.
+
+First choose your character! 
+Humans are average in all matters, but they can use items found inside the rooms.
+Dwarfs are more sturdy than humans, but they prefer to sell the items they find over using them.
+Elfs have a high attack ability, but low defenses and they prefer to use magic instead of any might you may find.
+Hobbits are very fast, and have higher potion drops. But their stats overall are less than human's. They can use items.
