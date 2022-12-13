@@ -150,7 +150,7 @@ class Helper:
         else:
             self.game_board.placement[player_piece] = chr(ord(board_letter_computer) - 1) + str(int(board_number_computer) + 1)
         self.pieces_number = self.pieces_number - 1
-        self.game_board.placement.pop(enemy_piece)
+        self.game_board.placement.pop(enemy_piece)  #changed from pop to remov
         return 
 
     def player_piece_choice(self):
@@ -270,9 +270,34 @@ class Helper:
 
 ##COMPUTER METHODS
 
+
+    def find_possible_moves(self, black_available_pieces):
+        possible_moves = []
+        piece_choice = ''
+        for piece in black_available_pieces:
+            possible_moves = self.computer_possible_moves(piece)
+            print("Possible moves for piece " + piece + " are: " + str(possible_moves))
+            if len(possible_moves) > 0:
+                piece_choice = piece
+                break
+            possible_moves.clear()
+        if len(possible_moves) < 1:
+            print("Computer has no possible moves")
+        else:
+            print("Piece: " + piece_choice + " can move to " + str(possible_moves))
+        return piece_choice, possible_moves
+
     def computer_piece_choice(self):
         print("Computer is choosing a piece...")
-        self.computer_possible_beatings('10')
+        piece_choice = ''
+        piece_choice_beatings = []
+        black_available_pieces = self.available_pieces() #works correctly, returns list of black pieces left
+        piece_choice, piece_choice_beatings = self.find_possible_beatings(black_available_pieces) #works correctly - checks if any of the black pieces can beat player
+        if piece_choice == '':
+            piece_choice, piece_choice_moves = self.find_possible_moves(black_available_pieces)
+        # if piece_choice == '': #if no possible beatings found for computer, look for possible moves
+
+        # self.computer_possible_beatings('10')
         #check if any piece can beat player piece, if so then use it
         #if can't beat any player piece, move forward with a piece that has movement possible
 
@@ -286,6 +311,7 @@ class Helper:
 
     ##Works correctly. For 10 gave e5, c5 as possible moves.
     def computer_possible_moves(self, choice):
+        print()
         print("Inside possible moves computer")
         # print(choice)
         # print(self.game_board.placement[choice][0]) #take first value from board numbering (a,b,c,d,e,f,g,h)
@@ -313,6 +339,37 @@ class Helper:
             temp_letter = chr(ord(board_letter) - 1)
             combined = temp_letter + str(temp_numb)
             moves.append(combined) 
+
+######THIS PART DOESNT WORK. Removes only one of the moves if 2 are possible. The first element of the list is not removed. 
+        #     #IT LEAVES THE LOOP BEFORE GETTING TO 2ND ITEM TO BE REMOVED. It literally doesnt get to 2nd item for some reason
+        temp_moves = moves
+        taken_fields_list = list(self.game_board.placement.values())
+
+        for i in range(len(temp_moves)-1):
+            if temp_moves[i] in taken_fields_list:
+                temp_moves.pop(i)
+
+        moves = temp_moves
+        # for move in temp_moves: #TBFixed: Removes only one of the moves if 2 are possible. The first element of the list is not removed. 
+        #     #IT LEAVES THE LOOP BEFORE GETTING TO 2ND ITEM TO BE REMOVED. It literally doesnt get to 2nd item for some reason
+        #     print("Move to be checked: " + move)
+        #     # i = 0
+        #     # moves_to_remove = []
+        #     # print("List of taken fields: " + str(taken_fields_list)) #works correctly
+        #     # for i in range(len(moves)):
+            # if move in taken_fields_list:
+        #         print("inside move in taken_fields_list check. Move to be removed: " + move)
+                # moves.remove(move)
+        #         print("Moves list after removal: " + str(moves))
+        #         self.move_removal(temp_moves)
+
+            #     moves.pop(i)
+            # i = i + 1
+            #     moves_to_remove.append(move) 
+            # if len(moves_to_remove) > 0:
+            #     for i in range(len(moves_to_remove)):
+            #         moves.remove(moves_to_remove[i-1])
+        print("Possible moves for that piece are: " + str(moves))
         return moves
 
     ##Works correctly. Correctly checks for possible beatings of player and if landing is possible
@@ -359,3 +416,27 @@ class Helper:
                                 beating.append(key)
             return beating
 
+    def available_pieces(self):
+        black_available_pieces = []
+        for key in self.game_board.placement:
+            if key in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']:
+                black_available_pieces.append(key)
+            #print("Black pieces available: " + str(black_available_pieces))
+        print("Black pieces available: " + str(black_available_pieces))
+        return black_available_pieces
+
+    def find_possible_beatings(self, black_available_pieces):
+        possible_beatings = []
+        piece_choice = ''
+        for piece in black_available_pieces:
+            possible_beatings = self.computer_possible_beatings(piece)
+            print("Possible beatings for piece " + piece + " are: " + str(possible_beatings))
+            if len(possible_beatings) > 0:
+                piece_choice = piece
+                break
+            possible_beatings.clear()
+        if len(possible_beatings) < 1:
+            print("Computer has no possible beatings")
+        else:
+            print("Piece: " + piece_choice + " has possible beating in " + str(possible_beatings))
+        return piece_choice, possible_beatings
