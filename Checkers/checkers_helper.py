@@ -269,13 +269,13 @@ class Helper:
 
 
 ##COMPUTER METHODS
-
+#First called computer_piece_choice() from show_menu() method above.
 
     def find_possible_moves(self, black_available_pieces):
         possible_moves = []
         piece_choice = ''
         for piece in black_available_pieces:
-            possible_moves = self.computer_possible_moves(piece)
+            possible_moves = self.computer_possible_moves(piece, check_for=1)
             print("Possible moves for piece " + piece + " are: " + str(possible_moves))
             if len(possible_moves) > 0:
                 piece_choice = piece
@@ -310,9 +310,14 @@ class Helper:
     #             self.move_piece_player(piece_choice, beaten_enemy_already = 0)
 
     ##Works correctly. For 10 gave e5, c5 as possible moves.
-    def computer_possible_moves(self, choice):
+    def computer_possible_moves(self, choice, check_for): 
+        #CHECK_FOR ARGUMENT: 
+        #if check_for = 0: call of this method is for beatings (which just has a role to return nearby movable fields, without checking anything further)
+        #if check_For = 1: call of this method is for moves, need to check if these fields aren't obstructed by ANY piece, if so can't move.
+
         print()
         print("Inside possible moves computer")
+        print("Check for value is: " + str(check_for))
         # print(choice)
         # print(self.game_board.placement[choice][0]) #take first value from board numbering (a,b,c,d,e,f,g,h)
         # print(self.game_board.placement[choice][1]) #take second value from board numbering (1,2,3,4,5,6,7,8)
@@ -320,36 +325,62 @@ class Helper:
         board_number = self.game_board.placement[choice][1]
         moves = []
 
+        taken_fields_list = list(self.game_board.placement.values())
+
         if board_letter == 'a': #if piece is in the first column
             temp_numb = int(board_number) - 1
             temp_letter = chr(ord(board_letter) + 1)
             combined = temp_letter + str(temp_numb)
-            moves.append(combined) 
+            if check_for == 1 and combined not in taken_fields_list: 
+                moves.append(combined) 
+            else:
+                moves.append(combined)
         elif board_letter == 'h': #if piece is in the last column
             temp_numb = int(board_number) - 1
             temp_letter = chr(ord(board_letter) - 1)
             combined = temp_letter + str(temp_numb)
-            moves.append(combined) 
+            if check_for == 1 and combined not in taken_fields_list: 
+                moves.append(combined) 
+            else:
+                moves.append(combined)
         else:
             temp_numb = int(board_number) - 1
             temp_letter = chr(ord(board_letter) + 1)
             combined = temp_letter + str(temp_numb)
-            moves.append(combined)
+            if check_for == 1 and combined not in taken_fields_list: 
+                moves.append(combined)
+            else:
+                moves.append(combined)
             temp_numb = int(board_number) - 1
             temp_letter = chr(ord(board_letter) - 1)
             combined = temp_letter + str(temp_numb)
-            moves.append(combined) 
+            if check_for == 1 and combined not in taken_fields_list: 
+                moves.append(combined) 
+            else:
+                moves.append(combined)
+
+        return moves
 
 ######THIS PART DOESNT WORK. Removes only one of the moves if 2 are possible. The first element of the list is not removed. 
         #     #IT LEAVES THE LOOP BEFORE GETTING TO 2ND ITEM TO BE REMOVED. It literally doesnt get to 2nd item for some reason
-        temp_moves = moves
-        taken_fields_list = list(self.game_board.placement.values())
+        #only works correctly for 
 
-        for i in range(len(temp_moves)-1):
-            if temp_moves[i] in taken_fields_list:
-                temp_moves.pop(i)
+#####EG1 - HERE CHECKING IF POSSIBLE MOVEMENT FIELDS AREN'T BLOCKED BY SOME PIECE. ABOVE CHECKING WHERE IT COULD POSSIBLY MOVE, AND HERE VALIDAITON IF NOT BLOCKED FIELDS
+#this works correctly for  04, 05 (showing no moves possible), 09, 10, 11, 12 (showing 1 or 2 moves correctly)
+#works incorrectly for 01, 02, 03, 06, 07, 08 showing that they all have 1 move possible, when they are blocked
+#ISSUE - it only removes the first item in the list instead of both for 01, 02, 03, 06, 07, 08 -> all these have 2 possible moves if not blocked.
+        # print("BEFORE BLOCKED CHECK. Possible moves for that piece are: " + str(moves))
+        # temp_moves = moves
+        # taken_fields_list = list(self.game_board.placement.values())
 
-        moves = temp_moves
+        # for move in temp_moves:
+        #     if move in taken_fields_list:
+        #         moves.remove(move)
+
+        # print("AFTER BLOCKED CHECK. Possible moves for that piece are: " + str(moves))
+        # return moves
+
+###EG1 END
         # for move in temp_moves: #TBFixed: Removes only one of the moves if 2 are possible. The first element of the list is not removed. 
         #     #IT LEAVES THE LOOP BEFORE GETTING TO 2ND ITEM TO BE REMOVED. It literally doesnt get to 2nd item for some reason
         #     print("Move to be checked: " + move)
@@ -369,20 +400,24 @@ class Helper:
             # if len(moves_to_remove) > 0:
             #     for i in range(len(moves_to_remove)):
             #         moves.remove(moves_to_remove[i-1])
-        print("Possible moves for that piece are: " + str(moves))
-        return moves
+
 
     ##Works correctly. Correctly checks for possible beatings of player and if landing is possible
     def computer_possible_beatings(self, choice): #11.12TODO - this still needs to check if there are no blocking pieces that don't allow the beating!
-            computer_possible_moves = self.computer_possible_moves(choice) #this returns fields with possible moves, NOT enemy pieces (e.g a2, c2 not 01, 02). Need to find the key of the value
             
-            for move in computer_possible_moves:
-                print("Computer piece " + choice + " can move to field: " + move)
+            #HOW IT WORKS 
+            #below line is used to find nearby, movable fields. Later it is used to check if player pieces are there. And if so, later checked if there 
+            #is a field to land after beating. If yes, computer can beat player.
+            computer_moves = self.computer_possible_moves(choice, check_for=0) #this returns fields with possible moves, NOT enemy pieces (e.g a2, c2 not 01, 02). Need to find the key of the value
+            
+
+            # for move in computer_moves:
+            #     print("Computer piece " + choice + " can move to field: " + move)
             
             beating = []
             for key in self.game_board.placement:
                 if key in ['AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'II', 'JJ', 'KK', 'LL']:
-                    if (self.game_board.placement[key] in computer_possible_moves): # self.game_board.placement[key] is like self.game_board.placement['01'] which returns value (field like a1) 
+                    if (self.game_board.placement[key] in computer_moves): # self.game_board.placement[key] is like self.game_board.placement['01'] which returns value (field like a1) 
                         if int(self.game_board.placement[key][1]) > 1: #check if there is space to move, if computer piece is not at row 1 
 
     ##                      checking here if I can land after beating enemy piece
@@ -427,9 +462,9 @@ class Helper:
 
     def find_possible_beatings(self, black_available_pieces):
         possible_beatings = []
-        piece_choice = ''
+        piece_choice = '' #temp, placeholder
         for piece in black_available_pieces:
-            possible_beatings = self.computer_possible_beatings(piece)
+            possible_beatings = self.computer_possible_beatings(piece) #this uses method possible moves too
             print("Possible beatings for piece " + piece + " are: " + str(possible_beatings))
             if len(possible_beatings) > 0:
                 piece_choice = piece
