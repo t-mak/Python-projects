@@ -271,30 +271,31 @@ class Helper:
 ##COMPUTER METHODS
 #First called computer_piece_choice() from show_menu() method above.
 
-    def find_possible_moves(self, black_available_pieces):
-        possible_moves = []
-        piece_choice = ''
-        for piece in black_available_pieces:
-            possible_moves = self.computer_possible_moves(piece, check_for=1)
-            print("Possible moves for piece " + piece + " are: " + str(possible_moves))
-            if len(possible_moves) > 0:
-                piece_choice = piece
-                break
-            possible_moves.clear()
-        if len(possible_moves) < 1:
-            print("Computer has no possible moves")
-        else:
-            print("Piece: " + piece_choice + " can move to " + str(possible_moves))
-        return piece_choice, possible_moves
-
+#HOW IT WORKS
+#This method checks for each computer piece if it has possible moves (not beatings).
+#It returns as soon as it finds a piece that can move somewhere. 
+#But list order is shuffled -> meaning it will randomize order first, so 01 isn't always checked first and computer is less predictable.
+#meaning if 01 has possible moves, it won't always be chosen as a piece to move by computer thanks to randomizing the order of the list. 
+#Computer might move 09 or 05 instead since random.shuffle() put it as a first element in the list after shuffle instead of 01
+#If a piece has possible move, it is stored together with field that it can move to and method breaks and returns these value
+ 
     def computer_piece_choice(self):
         print("Computer is choosing a piece...")
         piece_choice = ''
         piece_choice_beatings = []
         black_available_pieces = self.available_pieces() #works correctly, returns list of black pieces left
         piece_choice, piece_choice_beatings = self.find_possible_beatings(black_available_pieces) #works correctly - checks if any of the black pieces can beat player
+     
         if piece_choice == '':
             piece_choice, piece_choice_moves = self.find_possible_moves(black_available_pieces)
+        #ABOVE WORKS FINE. 
+        # These lines return random computer piece which can do a beating, and if no piece can do a beating, it returns possible moves for computer pieces
+
+        #BELOW
+        #Implement computer doing the move - whether beating or moving piece to a different field. Piece to be used has been selected already in the above code
+        #need equivalent of players move_piece_player() method to do it
+
+
         # if piece_choice == '': #if no possible beatings found for computer, look for possible moves
 
         # self.computer_possible_beatings('10')
@@ -361,47 +362,6 @@ class Helper:
 
         return moves
 
-######THIS PART DOESNT WORK. Removes only one of the moves if 2 are possible. The first element of the list is not removed. 
-        #     #IT LEAVES THE LOOP BEFORE GETTING TO 2ND ITEM TO BE REMOVED. It literally doesnt get to 2nd item for some reason
-        #only works correctly for 
-
-#####EG1 - HERE CHECKING IF POSSIBLE MOVEMENT FIELDS AREN'T BLOCKED BY SOME PIECE. ABOVE CHECKING WHERE IT COULD POSSIBLY MOVE, AND HERE VALIDAITON IF NOT BLOCKED FIELDS
-#this works correctly for  04, 05 (showing no moves possible), 09, 10, 11, 12 (showing 1 or 2 moves correctly)
-#works incorrectly for 01, 02, 03, 06, 07, 08 showing that they all have 1 move possible, when they are blocked
-#ISSUE - it only removes the first item in the list instead of both for 01, 02, 03, 06, 07, 08 -> all these have 2 possible moves if not blocked.
-        # print("BEFORE BLOCKED CHECK. Possible moves for that piece are: " + str(moves))
-        # temp_moves = moves
-        # taken_fields_list = list(self.game_board.placement.values())
-
-        # for move in temp_moves:
-        #     if move in taken_fields_list:
-        #         moves.remove(move)
-
-        # print("AFTER BLOCKED CHECK. Possible moves for that piece are: " + str(moves))
-        # return moves
-
-###EG1 END
-        # for move in temp_moves: #TBFixed: Removes only one of the moves if 2 are possible. The first element of the list is not removed. 
-        #     #IT LEAVES THE LOOP BEFORE GETTING TO 2ND ITEM TO BE REMOVED. It literally doesnt get to 2nd item for some reason
-        #     print("Move to be checked: " + move)
-        #     # i = 0
-        #     # moves_to_remove = []
-        #     # print("List of taken fields: " + str(taken_fields_list)) #works correctly
-        #     # for i in range(len(moves)):
-            # if move in taken_fields_list:
-        #         print("inside move in taken_fields_list check. Move to be removed: " + move)
-                # moves.remove(move)
-        #         print("Moves list after removal: " + str(moves))
-        #         self.move_removal(temp_moves)
-
-            #     moves.pop(i)
-            # i = i + 1
-            #     moves_to_remove.append(move) 
-            # if len(moves_to_remove) > 0:
-            #     for i in range(len(moves_to_remove)):
-            #         moves.remove(moves_to_remove[i-1])
-
-
     ##Works correctly. Correctly checks for possible beatings of player and if landing is possible
     def computer_possible_beatings(self, choice): #11.12TODO - this still needs to check if there are no blocking pieces that don't allow the beating!
             
@@ -461,8 +421,13 @@ class Helper:
         return black_available_pieces
 
     def find_possible_beatings(self, black_available_pieces):
+        #added list shuffle, so computer doesn't always choose 01, 02, 03... as first choice if they have possible beatings, making it less predictable
+        #what move computer will do. Now even if 01 can beat player, computer might choose piece 05 instead.
         possible_beatings = []
         piece_choice = '' #temp, placeholder
+        print("Unshuffled black_available_pieces in find possible beatings: " + str(black_available_pieces))
+        random.shuffle(black_available_pieces)
+        print("Shuffled black_available_pieces using random.shuffle in find possible beatings: " + str(black_available_pieces)) 
         for piece in black_available_pieces:
             possible_beatings = self.computer_possible_beatings(piece) #this uses method possible moves too
             print("Possible beatings for piece " + piece + " are: " + str(possible_beatings))
@@ -475,3 +440,23 @@ class Helper:
         else:
             print("Piece: " + piece_choice + " has possible beating in " + str(possible_beatings))
         return piece_choice, possible_beatings
+
+    def find_possible_moves(self, black_available_pieces):
+        possible_moves = []
+        piece_choice = ''
+        print("Unshuffled black_available_pieces: " + str(black_available_pieces))
+        random.shuffle(black_available_pieces)
+        print("Shuffled black_available_pieces using random.shuffle: " + str(black_available_pieces)) 
+        print("Shuffled black_available_pieces: " + str(random.sample(black_available_pieces, len(black_available_pieces))))
+        for piece in black_available_pieces:
+            possible_moves = self.computer_possible_moves(piece, check_for=1)
+            print("Possible moves for piece " + piece + " are: " + str(possible_moves))
+            if len(possible_moves) > 0:
+                piece_choice = piece
+                break
+            possible_moves.clear()
+        if len(possible_moves) < 1:
+            print("Computer has no possible moves")
+        else:
+            print("Piece: " + piece_choice + " can move to " + str(possible_moves))
+        return piece_choice, possible_moves
