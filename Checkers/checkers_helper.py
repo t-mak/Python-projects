@@ -1,11 +1,13 @@
 #TODO
 #DONE - can't beat if no landing possible anymore. Player beating enemy pieces movement - this still needs to check if there are no blocking pieces that don't allow the beating!
-#enemy movement
-#changing to queen piece after reaching last line and movement for it 
+#DONE enemy movement
+#DONE enemy beating
+#player NEEDING to beat when player has a beating
+#changing to queen piece after reaching last line and movement for it -> basically more rules
 #changing to queen piece for enemy too after reaching first line
-#add checking before enemy moves, if there are any left pieces for it
 
-#11.12 22:41 - enemy movement, beating not implemented. Queens not implemented.
+#ISSUES
+#FIXED computer moves instead of beating, when it can beat
 
 import random
 from pickle import FALSE
@@ -271,50 +273,104 @@ class Helper:
 ##COMPUTER METHODS
 #First called computer_piece_choice() from show_menu() method above.
 
-#HOW IT WORKS
-#This method checks for each computer piece if it has possible moves (not beatings).
-#It returns as soon as it finds a piece that can move somewhere. 
-#But list order is shuffled -> meaning it will randomize order first, so 01 isn't always checked first and computer is less predictable.
-#meaning if 01 has possible moves, it won't always be chosen as a piece to move by computer thanks to randomizing the order of the list. 
-#Computer might move 09 or 05 instead since random.shuffle() put it as a first element in the list after shuffle instead of 01
-#If a piece has possible move, it is stored together with field that it can move to and method breaks and returns these value
- 
+#TBD (move_piece_computer method), it needs to be changed to a big degree. First version is a copy of move_piece_player and comments apply to differences between these 2 methods
+#I already have a piece choosen by computer
+#I already have a beating I want it to do or a move I want it to do (if it can beat, beating. If it cannot, move)
+#Same as for player, after a beating I need to recheck if a piece can do a beating from a new position. So computer can do multiple beatings in one turn
+#But same as for player, it can only do additional beatings after a beating has been done. It canoot do a beating+move. It can only do beating+beating(+beating...)
+#I need to call this method either for movement or beating: add argument for the method like beat_or_move with value 0 being beating, value 1 being move
+#ATTENTION: possible_moves returns 1-2 list items. Possible_beatings only return 1 item. Either update possible_moves method or take it into consideration in move_piece_computer
+
+    def computer_beat_player(self, piece_choice, beating_choice): 
+        print("Beating choice is: " + str(beating_choice)) 
+
+        piece_choice = str(piece_choice)
+        beating_choice = str(beating_choice[0]) #was otherwise giving KeyError: "['JJ']" at line board_letter_player = self.game_board.placement[piece_to_beat][0]. It was a list ['JJ'] instead of 'JJ' 
+
+        #THESE SHOULD HOLD PIECE NAME (01, JJ ETC.)
+        computer_piece = piece_choice
+        piece_to_beat = beating_choice
+
+        #THESE SHOULD HOLD BOARD FIELD VALUES (a1, g5 etc)
+        board_letter_computer = self.game_board.placement[computer_piece][0]
+        board_number_computer = self.game_board.placement[computer_piece][1]  
+        board_letter_player = self.game_board.placement[piece_to_beat][0]  
+        board_number_player = self.game_board.placement[piece_to_beat][1]  
+        
+        #check relative position of computer piece to player piece. Depending on it, reposition computer piece and remove player piece that is being beaten
+        if (ord(board_letter_computer) < ord(board_letter_player)):
+            self.game_board.placement[computer_piece] = chr(ord(board_letter_player) + 1) + str(int(board_number_player) - 1)
+            print(chr(ord(board_letter_player) + 1) + str(int(board_number_player) - 1))
+        else:
+            self.game_board.placement[computer_piece] = chr(ord(board_letter_player) - 1) + str(int(board_number_player) - 1)
+        self.pieces_number = self.pieces_number - 1
+        self.game_board.placement.pop(piece_to_beat)
+        return
+
+    def move_piece_computer(self, piece_choice, field_choice, move_or_beat):
+        if move_or_beat == 0: #if computer moves
+            i = 0 
+            #below checks if a piece has 1 or 2 possible moves. 
+            #if there are 2 possible moves, randomly choose one of them.
+            if len(field_choice) == 1:
+                self.game_board.placement[piece_choice] = field_choice[i] #move piece to a new positon
+                print("Computer moved piece " + piece_choice + " to field " + field_choice[i])
+            else:
+                i = random.randint(0, 1)
+                self.game_board.placement[piece_choice] = field_choice[i]
+                print("Computer moved piece " + piece_choice + " to field " + field_choice[i])
+        else:
+            print("do a beating") #if computer beats player
+            self.computer_beat_player(piece_choice, field_choice)
+
+            # self.game_board.placement[piece_choice] = choosen_move_beating
+        return
+
+
+    def move_piece_player(self, piece_choice, beaten_enemy_already): #works! For moving pieces alone, but works!
+        #variable to check if I already beaten someone with this piece. If so, I can only beat again, cannot move
+        possible_beatings = []
+        possible_beatings = self.possible_beatings_player(piece_choice)
+        if (len(possible_beatings) >0):
+            print("You must beat the enemy piece")
+            print("Possible beatings: ")
+            for n in possible_beatings:
+                print(n)
+            self.player_beating_enemy(piece_choice, possible_beatings)
+            beaten_enemy_already = 1
+            self.move_piece_player(piece_choice, beaten_enemy_already)
+        if beaten_enemy_already != 1:
+            new_position = input("Where do you want to move it?: ")
+            if (new_position in self.possible_moves_player(piece_choice)): #checks if piece can move there and if there arent any other pieces on that field.
+                for key in self.game_board.placement:
+                    if (self.game_board.placement[key] == new_position):
+                        print("Wrong destination, another piece is already on that position")
+                        return 0
+                self.game_board.placement[piece_choice] = new_position
+            else:
+                print('You cannot move there')
+                self.show_menu() 
+        #self.enemy_piece_choice() #enemy turn     #HERE ERROR    
+        return 0
+
     def computer_piece_choice(self):
         print("Computer is choosing a piece...")
         piece_choice = ''
-        piece_choice_beatings = []
+        piece_choice_beating = []
         black_available_pieces = self.available_pieces() #works correctly, returns list of black pieces left
-        piece_choice, piece_choice_beatings = self.find_possible_beatings(black_available_pieces) #works correctly - checks if any of the black pieces can beat player
-     
+        piece_choice, piece_choice_beating = self.find_possible_beatings(black_available_pieces) #works correctly - checks if any of the black pieces can beat player
+
         if piece_choice == '':
-            piece_choice, piece_choice_moves = self.find_possible_moves(black_available_pieces)
-        #ABOVE WORKS FINE. 
-        # These lines return random computer piece which can do a beating, and if no piece can do a beating, it returns possible moves for computer pieces
-
-        #BELOW
-        #Implement computer doing the move - whether beating or moving piece to a different field. Piece to be used has been selected already in the above code
-        #need equivalent of players move_piece_player() method to do it
-
-
-        # if piece_choice == '': #if no possible beatings found for computer, look for possible moves
-
-        # self.computer_possible_beatings('10')
-        #check if any piece can beat player piece, if so then use it
-        #if can't beat any player piece, move forward with a piece that has movement possible
-
-    # def player_piece_choice(self):
-    #         piece_choice = input("Please select piece to move: ")
-    #         if (piece_choice in ['AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'II', 'JJ', 'KK', 'LL']):
-    #             print("You are about to move piece " + piece_choice)
-    #             # beating = []
-    #             # beating = self.possible_beatings_player(piece_choice)
-    #             self.move_piece_player(piece_choice, beaten_enemy_already = 0)
-
+            piece_choice, piece_choice_move = self.find_possible_moves(black_available_pieces)
+            self.move_piece_computer(piece_choice, piece_choice_move, move_or_beat=0) #INSIDE ABOVE IF CHECK - caleld if computer cannot beat a player, but can move
+        else:
+            self.move_piece_computer(piece_choice, piece_choice_beating, move_or_beat=1) #called if computer can beat player with a piece
+        
     ##Works correctly. For 10 gave e5, c5 as possible moves.
     def computer_possible_moves(self, choice, check_for): 
         #CHECK_FOR ARGUMENT: 
-        #if check_for = 0: call of this method is for beatings (which just has a role to return nearby movable fields, without checking anything further)
-        #if check_For = 1: call of this method is for moves, need to check if these fields aren't obstructed by ANY piece, if so can't move.
+        #if check_for = 0: call of this method is for beatings (which just has a role to return nearby movable fields, without checking anything further - they can be blocked)
+        #if check_For = 1: call of this method is for moves, need to check if these fields aren't obstructed/blocked/taken by ANY piece, if so can't move there.
 
         print()
         print("Inside possible moves computer")
@@ -334,7 +390,7 @@ class Helper:
             combined = temp_letter + str(temp_numb)
             if check_for == 1 and combined not in taken_fields_list: 
                 moves.append(combined) 
-            else:
+            elif check_for == 0: 
                 moves.append(combined)
         elif board_letter == 'h': #if piece is in the last column
             temp_numb = int(board_number) - 1
@@ -342,7 +398,7 @@ class Helper:
             combined = temp_letter + str(temp_numb)
             if check_for == 1 and combined not in taken_fields_list: 
                 moves.append(combined) 
-            else:
+            elif check_for == 0:
                 moves.append(combined)
         else:
             temp_numb = int(board_number) - 1
@@ -350,14 +406,14 @@ class Helper:
             combined = temp_letter + str(temp_numb)
             if check_for == 1 and combined not in taken_fields_list: 
                 moves.append(combined)
-            else:
+            elif check_for == 0:
                 moves.append(combined)
             temp_numb = int(board_number) - 1
             temp_letter = chr(ord(board_letter) - 1)
             combined = temp_letter + str(temp_numb)
             if check_for == 1 and combined not in taken_fields_list: 
                 moves.append(combined) 
-            else:
+            elif check_for == 0:
                 moves.append(combined)
 
         return moves
@@ -441,6 +497,14 @@ class Helper:
             print("Piece: " + piece_choice + " has possible beating in " + str(possible_beatings))
         return piece_choice, possible_beatings
 
+
+#HOW IT WORKS find_possible_moves() method
+#This method checks for each computer piece if it has possible moves (not beatings).
+#It returns as soon as it finds a piece that can move somewhere. 
+#But list order is shuffled -> meaning it will randomize order first, so 01 isn't always checked first and computer is less predictable.
+#meaning if 01 has possible moves, it won't always be chosen as a piece to move by computer thanks to randomizing the order of the list. 
+#Computer might move 09 or 05 instead since random.shuffle() put it as a first element in the list after shuffle instead of 01
+#If a piece has possible move, it is stored together with field that it can move to and method breaks and returns these value
     def find_possible_moves(self, black_available_pieces):
         possible_moves = []
         piece_choice = ''
