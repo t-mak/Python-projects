@@ -4,8 +4,10 @@
 #DONE enemy beating
 #DONE player needs to beat when player has a beating possible
 #DONE changing to king piece after reaching last line
-#DONE hanging to king piece for enemy too after reaching first line
+#DONE changing to king piece for enemy too after reaching first line
 #movement and beating for king
+#DONE king now can beat pieces across the board
+# -ISSUE with beating -> king doesnt check if there is a piece standing on a field behind, meaning it might land on a field where another piece is standing as of now
 # - movement possible moves is done, just now add code so king piece actually use that range of movement
 # - beating simply check fields from possible moves and whether there is free field after enemy piece, landing there and then recheck if more beatings possible. Dont complicate it further
 
@@ -25,6 +27,22 @@
 #FIXED if player choose a correct piece name e.g. 'aa' that cannot move anywhere, and later when prompted write wrong peice name e.g. 'ab43' there is an error
 #FIXED player now choosing correct piece to move results in 'this piece cannot move nor beat' and prompt again for selecting a piece
 #FIXED when player uses 'change' command to change selected piece, new piece would move but program would keep prompting for different field choice
+
+#ISSUE king lists all pieces on it's way as beatable, as long as they have space behind them, even if there are 2 pieces next to each other. 
+#Below shows that king AA can beat both 06 and 10. But it doesnt show 05. It should show that king AA cannot beat at all.
+#also king shouldnt be able to move over 2 pieces, nor over 1. if there is 1, it must beat like other normal pieces.
+#   A   B   C   D   E   F   G   H
+#   -------------------------------
+# 8| --  AA  --  02  --  03  --  04  |8
+# 7| 05  --  06  --  07  --  08  --  |7
+# 6| --  09  --  10  --  11  --  --  |6
+# 5| --  --  --  --  --  --  12  --  |5
+# 4| --  II  --  --  --  --  --  --  |4
+# 3| --  --  JJ  --  KK  --  LL  --  |3
+# 2| --  EE  --  FF  --  GG  --  HH  |2
+# 1| 01  --  BB  --  CC  --  DD  --  |1
+#   -------------------------------
+#    A   B   C   D   E   F   G   H
 
 import random, time
 from pickle import FALSE
@@ -114,9 +132,9 @@ class Helper:
             print("Welcome to Checkers!")
             print("Play new game - n")
             print("Quit - q")
-            print("Test kings movement - t")
+            # print("Test kings movement - t")
             choice = input("Your choice: ")
-            if (choice in ['n', 'q', 't']):
+            if (choice in ['n', 'q']):
                 if choice == "q":
                     print("Thanks for playing!")
                     quit()
@@ -125,10 +143,10 @@ class Helper:
                     self.game_in_progress = 1
                     self.game_board.initialize_game()
                     self.show_menu()
-                elif choice == "t":
-                    self.game_board.initialize_game()
-                    self.kings_possible_moves('JJ', check_for=1)
-                    self.kings_possible_moves('09', check_for=1)
+                # elif choice == "t":
+                #     self.game_board.initialize_game()
+                #     self.kings_possible_moves('JJ', check_for=1)
+                #     self.kings_possible_moves('09', check_for=1)
                 else:
                     self.show_menu()
         elif (self.game_in_progress == 1): 
@@ -185,11 +203,17 @@ class Helper:
             self.game_board.placement[player_piece] = chr(ord(board_letter_computer) - 1) + str(int(board_number_computer) + 1)
         self.pieces_number = self.pieces_number - 1
         self.game_board.placement.pop(enemy_piece)  #changed from pop to remov
+        if enemy_piece in self.kings:
+            self.kings.pop(enemy_piece)
         return 
 
     def player_piece_choice(self):
         self.print_kings()
         piece_choice = ''
+        if piece_choice in self.kings:
+                # field_choice = self.kings_possible_moves(piece_choice, check_for=1)
+                self.move_piece_king(piece_choice, field_choice="", beaten_enemy_already=0, computer_or_player=1)
+                self.print_board()
         for piece_beating_check in self.available_pieces_player():
             if len(self.possible_beatings_player(piece_beating_check)) > 0:
                 piece_choice = piece_beating_check
@@ -204,10 +228,10 @@ class Helper:
         else: 
             print()
             #KINGS ADDED
-            if piece_choice in self.kings:
-                field_choice = self.kings_possible_moves(piece_choice, check_for=1)
-                self.move_piece_king(piece_choice, field_choice, move_or_beat=1)
-            #KIGNS ADDED
+            
+
+                
+            #KIGNS ADDEDplayer_beat_enemy
             self.move_piece_player(piece_choice, beaten_enemy_already = 0)
 
 
@@ -222,6 +246,9 @@ class Helper:
         
     def move_piece_player(self, piece_choice, beaten_enemy_already): #works! For moving pieces alone, but works!
         #variable to check if I already beaten someone with this piece. If so, I can only beat again, cannot move
+        if piece_choice in self.kings:
+            self.move_piece_king(piece_choice, field_choice="", beaten_enemy_already=0, computer_or_player=1)
+            return
         possible_beatings = []
         possible_beatings = self.possible_beatings_player(piece_choice)
         print("Piece_choice in move_piece_player value is: " + str(piece_choice))
@@ -508,7 +535,6 @@ class Helper:
             possible_beatings.clear()
         return piece_choice, possible_beatings
 
-
 #HOW IT WORKS find_possible_moves() method
 #This method checks for each computer piece if it has possible moves (not beatings).
 #It returns as soon as it finds a piece that can move somewhere. 
@@ -528,7 +554,6 @@ class Helper:
             possible_moves.clear()
         return piece_choice, possible_moves
 
-
 #KING METHODS
     def add_kings(self):
         for piece in self.game_board.placement:
@@ -544,21 +569,142 @@ class Helper:
         print('The following pieces are kings: ', end='')
         print(self.kings)
 
+    def possible_beatings_playerking(self, choice, computer_or_player): #this just checks if enemy pieces are nearby and checks if field behind them is free or not
+        if computer_or_player == 1:
+            king_possible_moves = self.kings_possible_moves(choice, check_for=0) #this returns fields with possible moves, NOT enemy pieces (e.g a2, c2 not 01, 02). Need to find the key of the value
+            print("Kings possible moves are: " + str(king_possible_moves))
+            #enemy_field_check is now a list of possible moves of the player. Now I need to check if there are any enemy pieces in those fields
+            #check if in a field where player can move, there is an enemy piece
+            beating = []
+            for key in self.game_board.placement:
+                # print("in for loop")
+                if key in self.available_pieces_computer():
+                    # print("in first if")
+                    if (self.game_board.placement[key] in king_possible_moves): # self.game_board.placement[key] is like self.game_board.placement['01'] which returns value (field like a1) 
+                        # print("in second if")
+                        if int(self.game_board.placement[key][1]) < 8 and int(self.game_board.placement[key][1]) > 1 and str(self.game_board.placement[key][0]) !='a' and str(self.game_board.placement[key][0]) !='h': #check if there is space to move, if computer piece is not at row 8 
+                            # print("in third if")
+    # checking here if I can land after beating enemy piece
 
-    def move_piece_king(self, piece_choice, field_choice, move_or_beat):
-        if move_or_beat == 0: #if computer moves
-            i = 0 
-            #below checks if a piece has 1 or 2 possible moves. 
-            #if there are 2 possible moves, randomly choose one of them.
-            if len(field_choice) == 1:
-                self.game_board.placement[piece_choice] = field_choice[i] #move piece to a new positon
-                self.print_board()
-                print("Computer moved piece " + piece_choice + " to field " + field_choice[i])
-            else:
-                i = random.randint(0, len(field_choice))
-                self.game_board.placement[piece_choice] = field_choice[i]
-                self.print_board()
-                print("Computer moved piece " + piece_choice + " to field " + field_choice[i])
+                            #choice #this is player piece
+                            #key #this is enemy piece
+                            board_letter_king = self.game_board.placement[choice][0]
+                            board_number_king = self.game_board.placement[choice][1]
+                            board_letter_enemy = self.game_board.placement[key][0]
+                            board_number_enemy = self.game_board.placement[key][1] 
+
+                            check_if_taken = 0  
+                            # check positions of player vs enemy piece. Only need to check horizontal positions, as beating is always forward for player
+                            # player at e1 wants to beat an enemy at d2 -> I need to check if c3 is free for landing
+                            if (ord(board_letter_king) < ord(board_letter_enemy) and int(board_number_king) < int(board_number_enemy)): #if enemy piece is to the top right
+                                temp_value = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) + 1) #temp_value holds field for landing I would need free to beat
+                                check_if_taken = self.return_key(temp_value)
+                            #I need to get cordinates behind computer piece and then check if there is another piece there from the placement list
+                            if (ord(board_letter_king) > ord(board_letter_enemy) and int(board_number_king) < int(board_number_enemy)): #if enemy piece is to the top left
+                                 temp_value = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) +1)
+                                 check_if_taken = self.return_key(temp_value)
+                            if (ord(board_letter_king) > ord(board_letter_enemy) and int(board_number_king) > int(board_number_enemy)): #if enemy piece is to the bottom left
+                                 temp_value = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) -1)
+                                 check_if_taken = self.return_key(temp_value)
+                            elif (ord(board_letter_king) < ord(board_letter_enemy) and int(board_number_king) > int(board_number_enemy)): #if enemy piece is to the bottom right
+                                temp_value = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) - 1)
+                                check_if_taken = self.return_key(temp_value)
+                            if check_if_taken in self.game_board.placement:
+                                return beating
+                            else:
+                                beating.append(key)
+        print("Beating contents before returned to move_piece_playerking: " + str(beating))
+        return beating
+
+    def king_beating(self, piece_choice, possible_beatings, computer_or_player):
+        if computer_or_player == 1:
+            beating_choice = ''
+            while beating_choice not in self.available_pieces_computer():
+                print()
+                beating_choice = input("Which piece do you want to beat?: ")
+            self.king_beat_enemy(piece_choice, beating_choice)
+            possible_beatings.remove(beating_choice)
+        return 
+
+    def king_beat_enemy(self, piece_choice, beating_choice):
+        board_letter_king = self.game_board.placement[piece_choice][0]
+        board_number_king = self.game_board.placement[piece_choice][1]    
+        board_letter_enemy = self.game_board.placement[beating_choice][0]
+        board_number_enemy = self.game_board.placement[beating_choice][1]   
+
+        king_piece = self.return_key(self.game_board.placement[piece_choice])
+        enemy_piece = self.return_key(self.game_board.placement[beating_choice])
+
+        #REPOSITION KING PIECE
+        if (ord(board_letter_king) < ord(board_letter_enemy) and int(board_number_king) < int(board_number_enemy)): #if enemy piece is to the top right
+            new_pos = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) - 1)
+            print("New position for king is: " + str(new_pos))
+            # temp_value = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) + 1) #temp_value holds field for landing I would need free to beat
+            # check_if_taken = self.return_key(temp_value)
+            self.game_board.placement[king_piece] = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) + 1)
+        #I need to get cordinates behind computer piece and then check if there is another piece there from the placement list
+        if (ord(board_letter_king) > ord(board_letter_enemy) and int(board_number_king) < int(board_number_enemy)): #if enemy piece is to the top left
+            new_pos = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) + 1)
+            print("New position for king is: " + str(new_pos))
+            # temp_value = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) +1)
+            # check_if_taken = self.return_key(temp_value)
+            self.game_board.placement[king_piece] = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) + 1)
+        if (ord(board_letter_king) > ord(board_letter_enemy) and int(board_number_king) > int(board_number_enemy)): #if enemy piece is to the bottom left
+            new_pos = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) - 1)
+            print("New position for king is: " + str(new_pos))
+            self.game_board.placement[king_piece] = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) - 1)
+            # temp_value = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) -1)
+            # check_if_taken = self.return_key(temp_value)
+        elif (ord(board_letter_king) < ord(board_letter_enemy) and int(board_number_king) > int(board_number_enemy)): #if enemy piece is to the bottom right
+            new_pos = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) - 1)
+            print("New position for king is: " + str(new_pos))
+            self.game_board.placement[king_piece] = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) - 1)
+            # temp_value = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) - 1)
+            # check_if_taken = self.return_key(temp_value)
+        #check positions of player vs enemy piece. Only need to check horizontal positions, as beating is always forward for player
+        # if (ord(board_letter_king) < ord(board_letter_enemy)):
+        #     self.game_board.placement[player_piece] = chr(ord(board_letter_enemy) + 1) + str(int(board_number_enemy) + 1)
+        # else:
+        #     self.game_board.placement[player_piece] = chr(ord(board_letter_enemy) - 1) + str(int(board_number_enemy) + 1)
+        # self.pieces_number = self.pieces_number - 1
+        self.pieces_number = self.pieces_number - 1
+        self.game_board.placement.pop(enemy_piece)  #changed from pop to remov
+        if enemy_piece in self.kings:
+            self.kings.pop(enemy_piece)
+        return 
+
+    def move_piece_king(self, piece_choice, field_choice, beaten_enemy_already, computer_or_player):
+        move_or_beat = 0 #TO BE CHANGED, FOR TESTING its hardcoded value
+        if computer_or_player == 1: #if it's player making a move
+            possible_beatings = [] 
+            possible_beatings =  self.possible_beatings_playerking(piece_choice, computer_or_player=1)
+            print("King piece " + piece_choice + " can beat " + str(possible_beatings))
+            self.print_board()
+            print(self.game_board.placement)
+            print("Piece_choice in move_piece_king for player value is: " + str(piece_choice))
+            if (len(possible_beatings) >0):
+                print("Possible beatings: ", end='')
+                for n in possible_beatings:
+                    print(n + " ", end='')
+                self.king_beating(piece_choice, possible_beatings, computer_or_player=1)
+                beaten_enemy_already = 1
+                self.move_piece_king(piece_choice, field_choice="", beaten_enemy_already=1, computer_or_player=1) #field_choice is empty, since I dont need it for player
+        if beaten_enemy_already != 1:
+            print("TBD")
+        if computer_or_player == 0: #if it's computer making a move
+            if move_or_beat == 0: #if computer moves
+                i = 0 
+                #below checks if a piece has 1 or 2 possible moves. 
+                #if there are 2 possible moves, randomly choose one of them.
+                if len(field_choice) == 1:
+                    self.game_board.placement[piece_choice] = field_choice[i] #move piece to a new positon
+                    self.print_board()
+                    print("Computer moved piece " + piece_choice + " to field " + field_choice[i])
+                else:
+                    i = random.randint(0, len(field_choice))
+                    self.game_board.placement[piece_choice] = field_choice[i]
+                    self.print_board()
+                    print("Computer moved piece " + piece_choice + " to field " + field_choice[i])
         return
 #TBD for king
         # else: 
@@ -601,7 +747,7 @@ class Helper:
             elif check_for == 0:
                 moves.append(combined)
                 moves_x1.append(combined)
-        print("x1 quarter: " + str(moves_x1))   
+    #    print("x1 quarter: " + str(moves_x1))   
 
         #WORKS CORRECTLY check possible movement towards x2 quarter. 
         moves_x2 = []
@@ -620,7 +766,7 @@ class Helper:
                 moves.append(combined)
                 moves_x2.append(combined)
 
-        print("x2 quarter: " + str(moves_x2))   
+    #    print("x2 quarter: " + str(moves_x2))   
 
         # WORKS, seems like it. Check possible movement towards x3 quarter. 
         moves_x3 = []
@@ -639,7 +785,7 @@ class Helper:
                 moves.append(combined)
                 moves_x3.append(combined)
 
-        print("x3 quarter: " + str(moves_x3))  
+     #   print("x3 quarter: " + str(moves_x3))  
 
         moves_x4 = []
         temp_letter = chr(ord(board_letter))
@@ -658,10 +804,10 @@ class Helper:
                 moves.append(combined)
                 moves_x4.append(combined)
 
-        print("x4 quarter: " + str(moves_x4))  
+      #  print("x4 quarter: " + str(moves_x4))  
 
         moves = moves_x1 + moves_x2 + moves_x3 + moves_x4
-        print("all quarter: " + str(moves))  
+        print("Possible moves for king piece " + choice + ": " + str(moves))  
 
         return moves
             #damka w a1 moze isc do b2, c3, d4, e5, f6, g7, h8 -> all higher letter + higher number by 1 combined
