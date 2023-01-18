@@ -13,13 +13,6 @@
 class Board:
     def __init__(self):
         self.board = ()
-            # a tylko do b
-            # b do a c
-            # c do b d
-            # d do c e
-            # e do d f
-            # f do e g
-            # g do f h
         self.placement = {}
 
 
